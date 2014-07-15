@@ -8,3 +8,6 @@
 *.dummy
 *-test
 Makefile
+target/
+doc/
+.*.swp

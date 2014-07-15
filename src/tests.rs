@@ -58,10 +58,10 @@ fn assert_json_eq(results: json::Json, expected: json::Json, message: String) {
             write_whole_file(&expected_path, expected.as_slice());
             Command::new("colordiff")
                 .arg("-u1000")
-                .arg(result_path.display().to_str())
-                .arg(expected_path.display().to_str())
-                .status().unwrap();
-        }).unwrap();
+                .arg(result_path)
+                .arg(expected_path)
+                .status().unwrap_or_else(|e| fail!("Failed to get status of colordiff: {}", e));
+        }).unwrap_or_else(|_e| fail!("Failed to execute task"));
 
         fail!(message)
     }
@@ -102,7 +102,7 @@ fn run_json_tests<T: ToJson>(json_data: &str, parse: |input: &str| -> T) {
 
 #[test]
 fn component_value_list() {
-    run_json_tests(include_str!("css-parsing-tests/component_value_list.json"), |input| {
+    run_json_tests(include_str!("../css-parsing-tests/component_value_list.json"), |input| {
         tokenize(input).map(|(c, _)| c).collect::<Vec<ComponentValue>>()
     });
 }
@@ -110,7 +110,7 @@ fn component_value_list() {
 
 #[test]
 fn one_component_value() {
-    run_json_tests(include_str!("css-parsing-tests/one_component_value.json"), |input| {
+    run_json_tests(include_str!("../css-parsing-tests/one_component_value.json"), |input| {
         parse_one_component_value(tokenize(input))
     });
 }
@@ -118,7 +118,7 @@ fn one_component_value() {
 
 #[test]
 fn declaration_list() {
-    run_json_tests(include_str!("css-parsing-tests/declaration_list.json"), |input| {
+    run_json_tests(include_str!("../css-parsing-tests/declaration_list.json"), |input| {
         parse_declaration_list(tokenize(input)).collect::<Vec<Result<DeclarationListItem, SyntaxError>>>()
     });
 }
@@ -126,7 +126,7 @@ fn declaration_list() {
 
 #[test]
 fn one_declaration() {
-    run_json_tests(include_str!("css-parsing-tests/one_declaration.json"), |input| {
+    run_json_tests(include_str!("../css-parsing-tests/one_declaration.json"), |input| {
         parse_one_declaration(tokenize(input))
     });
 }
@@ -134,7 +134,7 @@ fn one_declaration() {
 
 #[test]
 fn rule_list() {
-    run_json_tests(include_str!("css-parsing-tests/rule_list.json"), |input| {
+    run_json_tests(include_str!("../css-parsing-tests/rule_list.json"), |input| {
         parse_rule_list(tokenize(input)).collect::<Vec<Result<Rule, SyntaxError>>>()
     });
 }
@@ -142,7 +142,7 @@ fn rule_list() {
 
 #[test]
 fn stylesheet() {
-    run_json_tests(include_str!("css-parsing-tests/stylesheet.json"), |input| {
+    run_json_tests(include_str!("../css-parsing-tests/stylesheet.json"), |input| {
         parse_stylesheet_rules(tokenize(input)).collect::<Vec<Result<Rule, SyntaxError>>>()
     });
 }
@@ -150,7 +150,7 @@ fn stylesheet() {
 
 #[test]
 fn one_rule() {
-    run_json_tests(include_str!("css-parsing-tests/one_rule.json"), |input| {
+    run_json_tests(include_str!("../css-parsing-tests/one_rule.json"), |input| {
         parse_one_rule(tokenize(input))
     });
 }
@@ -158,7 +158,7 @@ fn one_rule() {
 
 #[test]
 fn stylesheet_from_bytes() {
-    run_raw_json_tests(include_str!("css-parsing-tests/stylesheet_bytes.json"),
+    run_raw_json_tests(include_str!("../css-parsing-tests/stylesheet_bytes.json"),
     |input, expected| {
         let map = match input {
             json::Object(map) => map,
@@ -166,12 +166,12 @@ fn stylesheet_from_bytes() {
         };
 
         let result = {
-            let css = get_string(map, &"css_bytes".to_string()).unwrap().chars().map(|c| {
+            let css = get_string(&map, &"css_bytes".to_string()).unwrap().chars().map(|c| {
                 assert!(c as u32 <= 0xFF);
                 c as u8
             }).collect::<Vec<u8>>();
-            let protocol_encoding_label = get_string(map, &"protocol_encoding".to_string());
-            let environment_encoding = get_string(map, &"environment_encoding".to_string())
+            let protocol_encoding_label = get_string(&map, &"protocol_encoding".to_string());
+            let environment_encoding = get_string(&map, &"environment_encoding".to_string())
                 .and_then(encoding_from_whatwg_label);
 
             let (mut rules, used_encoding) = parse_stylesheet_rules_from_bytes(
@@ -179,7 +179,7 @@ fn stylesheet_from_bytes() {
 
             (rules.collect::<Vec<Result<Rule, SyntaxError>>>(), used_encoding.name().to_string()).to_json()
         };
-        assert_json_eq(result, expected, json::Object(map).to_str());
+        assert_json_eq(result, expected, json::Object(map).to_pretty_str());
     });
 
     fn get_string<'a>(map: &'a json::Object, key: &String) -> Option<&'a str> {
@@ -205,20 +205,20 @@ fn run_color_tests(json_data: &str, to_json: |result: Option<Color>| -> json::Js
 
 #[test]
 fn color3() {
-    run_color_tests(include_str!("css-parsing-tests/color3.json"), |c| c.to_json())
+    run_color_tests(include_str!("../css-parsing-tests/color3.json"), |c| c.to_json())
 }
 
 
 #[test]
 fn color3_hsl() {
-    run_color_tests(include_str!("css-parsing-tests/color3_hsl.json"), |c| c.to_json())
+    run_color_tests(include_str!("../css-parsing-tests/color3_hsl.json"), |c| c.to_json())
 }
 
 
 /// color3_keywords.json is different: R, G and B are in 0..255 rather than 0..1
 #[test]
 fn color3_keywords() {
-    run_color_tests(include_str!("css-parsing-tests/color3_keywords.json"), |c| {
+    run_color_tests(include_str!("../css-parsing-tests/color3_keywords.json"), |c| {
         match c {
             Some(RGBA(RGBA { red: r, green: g, blue: b, alpha: a }))
             => vec!(r * 255., g * 255., b * 255., a).to_json(),
@@ -252,7 +252,7 @@ fn bench_color_lookup_fail(b: &mut test::Bencher) {
 
 #[test]
 fn nth() {
-    run_json_tests(include_str!("css-parsing-tests/An+B.json"), |input| {
+    run_json_tests(include_str!("../css-parsing-tests/An+B.json"), |input| {
         parse_nth(tokenize(input).map(|(c, _)| c).collect::<Vec<ComponentValue>>().as_slice())
     });
 }
@@ -260,7 +260,7 @@ fn nth() {
 
 #[test]
 fn serializer() {
-    run_json_tests(include_str!("css-parsing-tests/component_value_list.json"), |input| {
+    run_json_tests(include_str!("../css-parsing-tests/component_value_list.json"), |input| {
         let component_values = tokenize(input).map(|(c, _)| c).collect::<Vec<ComponentValue>>();
         let serialized = component_values.iter().to_css();
         tokenize(serialized.as_slice()).map(|(c, _)| c).collect::<Vec<ComponentValue>>()

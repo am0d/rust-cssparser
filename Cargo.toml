@@ -1,0 +1,13 @@
+[package]
+name = "rust"
+version = "0.0.0"
+
+authors = ["Your Name <your@email.com>"]
+tags = []
+
+[[lib]]
+name = "rust"
+path = "src/lib.rs"
+
+[dependencies.encoding]
+git = "https://github.com/lifthrasiir/rust-encoding.git"
