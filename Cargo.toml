@@ -1,13 +1,15 @@
 [package]
-name = "rust"
+name = "cssparser"
 version = "0.0.0"
 
 authors = ["Your Name <your@email.com>"]
 tags = []
 
 [[lib]]
-name = "rust"
-path = "src/lib.rs"
+name = "cssparser"
+
+[[bin]]
+name = "rust-less"
 
 [dependencies.encoding]
 git = "https://github.com/lifthrasiir/rust-encoding.git"

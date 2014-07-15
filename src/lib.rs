@@ -16,7 +16,6 @@ extern crate debug;
 #[cfg(test)]
 extern crate test;
 
-#[cfg(test)]
 extern crate serialize;
 
 pub use tokenizer::{tokenize, Tokenizer};
