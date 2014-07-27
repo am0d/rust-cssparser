@@ -114,8 +114,11 @@ fn next_component_value(tokenizer: &mut Tokenizer) -> Option<Node> {
     let c = tokenizer.current_char();
     let component_value = match c {
         '\t' | '\n' | ' ' => {
+            let mut spaces = String::new();
             while !tokenizer.is_eof() {
-                match tokenizer.current_char() {
+                let c = tokenizer.current_char();
+                match c {
+
                     ' ' | '\t' => tokenizer.position += 1,
                     '\n' => {
                         tokenizer.position += 1;
@@ -123,8 +126,9 @@ fn next_component_value(tokenizer: &mut Tokenizer) -> Option<Node> {
                     },
                     _ => break,
                 }
+                spaces.push_char(c);
             }
-            WhiteSpace
+            WhiteSpace(spaces)
         },
         '"' => consume_string(tokenizer, false),
         '#' => {

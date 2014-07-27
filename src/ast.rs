@@ -2,7 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-use std::str;
 use std::fmt;
 use std::slice;
 use std::vec;
@@ -10,7 +9,7 @@ use serialize::{json};
 use serialize::json::ToJson;
 
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Show)]
 pub struct NumericValue {
     pub representation: String,
     pub value: f64,
@@ -18,7 +17,7 @@ pub struct NumericValue {
 }
 
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Show)]
 pub struct SourceLocation {
     pub line: uint,  // First line is 1
     pub column: uint,  // First character of a line is at column 1
@@ -28,7 +27,7 @@ pub struct SourceLocation {
 pub type Node = (ComponentValue, SourceLocation);  // TODO this is not a good name
 
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Show)]
 pub enum ComponentValue {
     // Preserved tokens.
     Ident(String),
@@ -42,7 +41,7 @@ pub enum ComponentValue {
     Percentage(NumericValue),
     Dimension(NumericValue, String),
     UnicodeRange(u32, u32),  // (start, end) of range
-    WhiteSpace,
+    WhiteSpace(String),
     Colon,  // :
     Semicolon,  // ;
     Comma,  // ,
@@ -72,7 +71,7 @@ pub enum ComponentValue {
 }
 
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Show)]
 pub struct Declaration {
     pub location: SourceLocation,
     pub name: String,
@@ -80,14 +79,14 @@ pub struct Declaration {
     pub important: bool,
 }
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Show)]
 pub struct QualifiedRule {
     pub location: SourceLocation,
     pub prelude: Vec<ComponentValue>,
     pub block: Vec<Node>,
 }
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Show)]
 pub struct AtRule {
     pub location: SourceLocation,
     pub name: String,
@@ -95,17 +94,18 @@ pub struct AtRule {
     pub block: Option<Vec<Node>>,
 }
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Show)]
 pub enum DeclarationListItem {
     Declaration(Declaration),
     // A better idea for a name that means "at-rule" but is not "AtRule"?
     DeclAtRule(AtRule),
 }
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Show)]
 pub enum Rule {
     QualifiedRule(QualifiedRule),
     AtRule(AtRule),
+    NonRule(ComponentValue)
 }
 
 #[deriving(PartialEq)]
@@ -114,7 +114,7 @@ pub struct SyntaxError {
     pub reason: ErrorReason,
 }
 
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Show)]
 pub enum ErrorReason {
     ErrEmptyInput,  // Parsing a single "thing", found only whitespace.
     ErrExtraInput,  // Found more non-whitespace after parsing a single "thing".
@@ -149,7 +149,10 @@ pub struct SkipWhitespaceIterator<'a> {
 impl<'a> Iterator<&'a ComponentValue> for SkipWhitespaceIterator<'a> {
     fn next(&mut self) -> Option<&'a ComponentValue> {
         for component_value in self.iter_with_whitespace {
-            if component_value != &WhiteSpace { return Some(component_value) }
+            match component_value {
+                &WhiteSpace(_) => (),
+                _ => return Some(component_value)
+            }
         }
         None
     }
@@ -173,7 +176,10 @@ pub struct MoveSkipWhitespaceIterator {
 impl Iterator<ComponentValue> for MoveSkipWhitespaceIterator {
     fn next(&mut self) -> Option<ComponentValue> {
         for component_value in self.iter_with_whitespace {
-            if component_value != WhiteSpace { return Some(component_value) }
+            match component_value {
+                WhiteSpace(_) => (),
+                _ =>  return Some(component_value) 
+            }
         }
         None
     }
@@ -269,6 +275,7 @@ impl ToJson for Rule {
         match *self {
             QualifiedRule(ref rule) => rule.to_json(),
             AtRule(ref rule) => rule.to_json(),
+            NonRule(ref component_value) => component_value.to_json()
         }
     }
 }
@@ -302,7 +309,7 @@ impl ToJson for ComponentValue {
             String(ref value) => JList!(JString!("string"), value.to_json()),
             URL(ref value) => JList!(JString!("url"), value.to_json()),
             Delim('\\') => JString!("\\"),
-            Delim(value) => json::String(str::from_char(value)),
+            Delim(value) => json::String(String::from_char(1, value)),
 
             Number(ref value) => json::List(vec!(JString!("number")) + numeric(value)),
             Percentage(ref value) => json::List(vec!(JString!("percentage")) + numeric(value)),
@@ -312,7 +319,7 @@ impl ToJson for ComponentValue {
             UnicodeRange(start, end)
             => JList!(JString!("unicode-range"), start.to_json(), end.to_json()),
 
-            WhiteSpace => JString!(" "),
+            WhiteSpace(ref value) => JString!(value.to_json()),
             Colon => JString!(":"),
             Semicolon => JString!(";"),
             Comma => JString!(","),

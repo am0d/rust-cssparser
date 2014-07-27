@@ -64,9 +64,9 @@ impl ast::ComponentValue {
                 }
             }
 
-            WhiteSpace => css.push_char(' '),
+            WhiteSpace(ref s) => css.push_str(s.as_slice()),
             Colon => css.push_char(':'),
-            Semicolon => css.push_char(';'),
+            Semicolon => css.push_str(";"),
             Comma => css.push_char(','),
             IncludeMatch => css.push_str("~="),
             DashMatch => css.push_str("|="),
@@ -168,7 +168,6 @@ pub trait ToCss {
     fn to_css_push(&mut self, css: &mut String);
 }
 
-
 impl<'a, I: Iterator<&'a ComponentValue>> ToCss for I {
     fn to_css_push(&mut self, css: &mut String) {
         let mut previous = match self.next() {
@@ -220,7 +219,7 @@ impl<'a, I: Iterator<&'a ComponentValue>> ToCss for I {
                 css.push_str("/**/")
             }
             // Skip whitespace when '\n' was previously written at the previous iteration.
-            if !matches!((previous, component_value), (&Delim('\\'), &WhiteSpace)) {
+            if !matches!((previous, component_value), (&Delim('\\'), &WhiteSpace(_))) {
                 component_value.to_css_push(css);
             }
             if component_value == &Delim('\\') {

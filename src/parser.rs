@@ -118,7 +118,7 @@ impl<T: Iterator<Node>> Iterator<Result<Rule, SyntaxError>> for StylesheetParser
         let iter = &mut self.iter;
         for_iter!(iter, (component_value, location), {
             match component_value {
-                WhiteSpace | CDO | CDC => (),
+                WhiteSpace(_) | CDO | CDC => return Some(Ok(NonRule(component_value))),
                 AtKeyword(name) => return Some(Ok(AtRule(parse_at_rule(iter, name, location)))),
                 _ => return Some(match parse_qualified_rule(iter, component_value, location) {
                     Ok(rule) => Ok(QualifiedRule(rule)),
@@ -136,7 +136,7 @@ impl<T: Iterator<Node>> Iterator<Result<Rule, SyntaxError>> for RuleListParser<T
         let iter = &mut self.iter;
         for_iter!(iter, (component_value, location), {
             match component_value {
-                WhiteSpace => (),
+                WhiteSpace(_) => (),
                 AtKeyword(name) => return Some(Ok(AtRule(parse_at_rule(iter, name, location)))),
                 _ => return Some(match parse_qualified_rule(iter, component_value, location) {
                     Ok(rule) => Ok(QualifiedRule(rule)),
@@ -155,7 +155,7 @@ for DeclarationListParser<T> {
         let iter = &mut self.iter;
         for_iter!(iter, (component_value, location), {
             match component_value {
-                WhiteSpace | Semicolon => (),
+                WhiteSpace(_) | Semicolon => (),
                 AtKeyword(name)
                 => return Some(Ok(DeclAtRule(parse_at_rule(iter, name, location)))),
                 _ => return Some(match parse_declaration(iter, component_value, location) {
@@ -180,7 +180,7 @@ fn parse_at_rule<T: Iterator<Node>>(iter: &mut T, name: String, location: Source
     for_iter!(iter, (component_value, _location), {
         match component_value {
             CurlyBracketBlock(content) => { block = Some(content); break },
-            Semicolon => break,
+            Semicolon => {prelude.push(Semicolon); break},
             component_value => prelude.push(component_value),
         }
     })
@@ -255,7 +255,10 @@ fn parse_declaration_important<T: Iterator<Node>>(iter: &mut T) -> bool {
 #[inline]
 fn next_non_whitespace<T: Iterator<Node>>(iter: &mut T) -> Option<Node> {
     for (component_value, location) in *iter {
-        if component_value != WhiteSpace { return Some((component_value, location)) }
+        match component_value {
+            WhiteSpace(_) => (),
+            _ => return Some((component_value, location)) 
+        }
     }
     None
 }
